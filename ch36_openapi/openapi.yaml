@@ -1,0 +1,280 @@
+openapi: 3.1.0
+info:
+  title: Todo API
+  version: 1.0.0
+  description: A simple todo REST API demonstrating OpenAPI 3.1 documentation.
+
+servers:
+  - url: http://localhost:8080/api/v1
+
+paths:
+  /todos:
+    get:
+      summary: List todos
+      operationId: listTodos
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated list of todos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - bearerAuth: []
+
+    post:
+      summary: Create a todo
+      operationId: createTodo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTodoRequest'
+      responses:
+        '201':
+          description: Todo created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      security:
+        - bearerAuth: []
+
+  /todos/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Get a todo
+      operationId: getTodo
+      responses:
+        '200':
+          description: Todo found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - bearerAuth: []
+    patch:
+      summary: Update a todo
+      operationId: updateTodo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTodoRequest'
+      responses:
+        '200':
+          description: Updated todo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+      security:
+        - bearerAuth: []
+    delete:
+      summary: Delete a todo
+      operationId: deleteTodo
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - bearerAuth: []
+
+  /auth/register:
+    post:
+      summary: Register a new user
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created with token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/login:
+    post:
+      summary: Log in
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Todo:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        done:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, text, done, created_at, updated_at]
+
+    CreateTodoRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          maxLength: 500
+      required: [text]
+
+    UpdateTodoRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          maxLength: 500
+        done:
+          type: boolean
+
+    TodoPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Todo'
+        total:
+          type: integer
+        page:
+          type: integer
+        per_page:
+          type: integer
+        has_more:
+          type: boolean
+
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+        password:
+          type: string
+          minLength: 8
+      required: [username, password]
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+            username:
+              type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        fields:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+        trace_id:
+          type: string
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
